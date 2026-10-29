@@ -307,8 +307,8 @@
       if (info) {
         where.textContent = "手機請打開 http://" + info.ip + ":" + info.port;
       } else {
-        where.textContent = "而家未連到電腦。可以按「用手機讀出嚟」，但唔可以下載 MP3。";
-        document.querySelector("#intro").textContent = "手機可以即場朗讀。下載 MP3 要部電腦同手機喺同一個 Wi-Fi。";
+        where.textContent = "呢個網頁唔使開電腦。按「用手機讀出嚟」就用手機已安裝嘅廣東話聲線，唔會產生 MP3 檔。曉曼、曉佳、雲龍同下載 MP3 要有一部開住嘅伺服器，GitHub 做唔到。";
+        document.querySelector("#intro").textContent = "輸入文字，然後按「用手機讀出嚟」。表情符號會轉成可以讀出嚟嘅字。";
       }
     });
     if (window.speechSynthesis) speechSynthesis.getVoices();

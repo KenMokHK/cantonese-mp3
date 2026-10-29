@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>廣東話轉 MP3</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "PingFang HK", "Microsoft JhengHei", "Noto Sans CJK TC", sans-serif;
+      background: #f4f1ea;
+      color: #1f2a24;
+    }
+    main { max-width: 720px; margin: 0 auto; padding: 20px 16px 40px; }
+    h1 { font-size: 1.6rem; margin: 0 0 6px; }
+    p { margin: 0 0 12px; line-height: 1.45; color: #5c675f; }
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      border: 0;
+      border-radius: 14px;
+      padding: 14px;
+      font: 1.05rem/1.5 inherit;
+      background: #fffdf8;
+      resize: vertical;
+    }
+    label { display: block; margin: 14px 0 6px; font-size: 0.95rem; }
+    select, input[type="text"] {
+      width: 100%;
+      font: 1rem inherit;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #d9d3c7;
+      background: #fff;
+    }
+    input[type="range"] { width: 100%; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    button {
+      font: 1rem inherit;
+      border: 0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #e7efe8;
+      color: #1f2a24;
+    }
+    button.primary { background: #1f6b4a; color: white; }
+    button:disabled { opacity: 0.55; }
+    .bar {
+      height: 10px;
+      background: #e3ddd2;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: #1f6b4a;
+      transition: width 0.2s linear;
+    }
+    #status { margin-top: 10px; min-height: 1.4em; }
+    audio { width: 100%; margin-top: 12px; }
+    .note {
+      background: #fff;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>廣東話轉 MP3</h1>
+    <p id="intro">喺手機瀏覽器輸入文字。表情符號會轉成可以讀出嚟嘅字。</p>
+    <textarea id="text" placeholder="喺度貼上文字"></textarea>
+    <label for="voice">聲線</label>
+    <select id="voice">
+      <option value="zh-HK-HiuMaanNeural">曉曼（女聲）</option>
+      <option value="zh-HK-HiuGaaiNeural">曉佳（女聲）</option>
+      <option value="zh-HK-WanLungNeural">雲龍（男聲）</option>
+    </select>
+    <label for="speed">語速 <span id="speedLabel">慢 6%</span></label>
+    <input id="speed" type="range" min="-30" max="30" value="-6">
+    <div class="bar" aria-hidden="true"><span id="bar"></span></div>
+    <div class="row">
+      <button class="primary" id="make" type="button">下載 MP3</button>
+      <button id="demo" type="button">試聽聲線</button>
+      <button id="phoneSpeak" type="button">用手機讀出嚟</button>
+      <button id="clean" type="button">整理文字</button>
+    </div>
+    <p id="status">選擇聲線就會播放短示範。</p>
+    <audio id="player" controls></audio>
+    <div class="note">
+      <p id="where"></p>
+      <p>呢個頁面可以喺 iPhone Safari 同 Android Chrome 打開，但係 Windows 程式本身唔可以安裝落手機。</p>
+      <p>下載 MP3 要部電腦開住，手機連同一個 Wi-Fi。「用手機讀出嚟」用手機自己嘅聲線，唔會產生檔案。iPhone 請去「設定、輔助使用、朗讀內容、聲音、中文」下載廣東話。Android 請喺文字轉語音下載中文（香港）。</p>
+    </div>
+  </main>
+  <script>
+    const EMOJI_WORDS = {
+      "🤣": "大笑", "😂": "笑", "😀": "開心", "😃": "開心", "😄": "開心", "😁": "開心",
+      "😊": "微笑", "😉": "眨眼", "😍": "好鍾意", "🥰": "好鍾意", "😘": "親一親",
+      "😭": "大喊", "😢": "喊", "😡": "好嬲", "😠": "嬲", "😱": "驚", "😅": "尷尬笑",
+      "🤔": "諗緊", "😴": "眼訓", "😎": "好得意", "😤": "唔抵", "💀": "嚇死", "🙈": "唔好睇",
+      "👍": "讚", "👎": "唔好", "👏": "拍手", "🙏": "多謝", "💪": "加油", "👀": "睇住",
+      "🤝": "合作", "❤": "心", "💕": "心", "💖": "心", "💗": "心", "🔥": "好勁",
+      "⭐": "星星", "🌟": "星星", "✅": "完成", "❌": "唔得", "⚠": "注意", "❗": "注意",
+      "❓": "問號", "💯": "一百分", "🎉": "慶祝", "🥳": "慶祝", "📌": "重點",
+      "📝": "筆記", "📢": "公佈", "💡": "提示", "🚀": "快", "💰": "錢", "📈": "上升", "📉": "下跌"
+    };
+    const leftover = /[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F3FB}-\u{1F3FF}\u200D\uFE0E\uFE0F\u20E3]/gu;
+
+    const text = document.querySelector("#text");
+    const voice = document.querySelector("#voice");
+    const speed = document.querySelector("#speed");
+    const speedLabel = document.querySelector("#speedLabel");
+    const status = document.querySelector("#status");
+    const bar = document.querySelector("#bar");
+    const player = document.querySelector("#player");
+    const buttons = [...document.querySelectorAll("button")];
+    let server = false;
+    let timer = null;
+
+    function rateValue() {
+      const n = Number(speed.value);
+      return (n >= 0 ? "+" : "") + n + "%";
+    }
+    function showRate() {
+      const n = Number(speed.value);
+      speedLabel.textContent = n === 0 ? "正常" : (n > 0 ? "快 " + n + "%" : "慢 " + Math.abs(n) + "%");
+    }
+    speed.addEventListener("input", showRate);
+    showRate();
+
+    function prepare(raw) {
+      let changed = 0;
+      let cleaned = raw.replace(/\uFE0F|\uFE0E/g, "");
+      const keys = Object.keys(EMOJI_WORDS).sort((a, b) => b.length - a.length);
+      for (const key of keys) {
+        const plain = key.replace(/\uFE0F|\uFE0E/g, "");
+        if (!plain || !cleaned.includes(plain)) continue;
+        const count = cleaned.split(plain).length - 1;
+        cleaned = cleaned.split(plain).join(EMOJI_WORDS[key]);
+        changed += count;
+      }
+      cleaned = cleaned.replace(leftover, () => { changed += 1; return ""; });
+      cleaned = cleaned.replace(/[ \t]{2,}/g, " ").replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n");
+      cleaned = cleaned.replace(/\s+([，。！？、；：,.!?])/g, "$1").trim();
+      return { text: cleaned, removed: changed };
+    }
+
+    function setBusy(busy) {
+      buttons.forEach((button) => { button.disabled = busy; });
+    }
+    function setBar(value) {
+      bar.style.width = Math.max(0, Math.min(100, value)) + "%";
+    }
+    function stopTimer() {
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+    function startEstimate(length) {
+      stopTimer();
+      const ms = Math.max(2500, length / 4.2 * 1000);
+      const started = Date.now();
+      setBar(2);
+      timer = setInterval(() => setBar(Math.min(95, (Date.now() - started) / ms * 100)), 200);
+    }
+
+    async function hasServer() {
+      try {
+        const response = await fetch("/api/info");
+        if (!response.ok) return null;
+        return await response.json();
+      } catch (error) {
+        return null;
+      }
+    }
+
+    async function playUrl(url) {
+      player.src = url;
+      await player.play();
+    }
+
+    async function playDemo() {
+      const spoken = "你好，呢個係廣東話聲線示範。";
+      if (!server) {
+        speakOnPhone(spoken);
+        return;
+      }
+      setBusy(true);
+      status.textContent = "正在播放聲線示範…";
+      setBar(30);
+      try {
+        const response = await fetch("/api/demo?voice=" + encodeURIComponent(voice.value) + "&rate=" + encodeURIComponent(rateValue()));
+        if (!response.ok) throw new Error(await response.text());
+        const blob = await response.blob();
+        await playUrl(URL.createObjectURL(blob));
+        status.textContent = "正在播放示範。";
+        setBar(100);
+      } catch (error) {
+        status.textContent = "示範播放失敗，請檢查網絡。";
+        setBar(0);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function cantoneseVoice() {
+      const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+      return voices.find((item) => /zh-HK|yue|Cantonese|Hong Kong/i.test(item.lang + " " + item.name)) || null;
+    }
+
+    function speakOnPhone(spoken) {
+      if (!window.speechSynthesis) {
+        status.textContent = "呢個瀏覽器唔支援手機朗讀。";
+        return;
+      }
+      const picked = cantoneseVoice();
+      if (!picked) {
+        status.textContent = "手機未有廣東話聲線。請先喺系統設定下載中文（香港），否則只會用普通話或者英文。";
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(spoken);
+      utterance.voice = picked;
+      utterance.lang = picked.lang || "zh-HK";
+      const n = Number(speed.value);
+      utterance.rate = Math.max(0.5, Math.min(1.5, 1 + n / 100));
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utterance);
+      status.textContent = "用緊手機聲線：" + picked.name + "。呢個唔會儲存 MP3。";
+    }
+
+    document.querySelector("#clean").addEventListener("click", () => {
+      const result = prepare(text.value);
+      text.value = result.text;
+      status.textContent = result.removed
+        ? "已移除 " + result.removed + " 個表情符號，並整理成可朗讀文字。"
+        : "文字已經可以朗讀。";
+    });
+
+    document.querySelector("#phoneSpeak").addEventListener("click", () => {
+      const result = prepare(text.value);
+      text.value = result.text;
+      if (!result.text) {
+        status.textContent = "請先輸入文字。";
+        return;
+      }
+      speakOnPhone(result.text);
+    });
+
+    document.querySelector("#demo").addEventListener("click", playDemo);
+    voice.addEventListener("change", playDemo);
+
+    document.querySelector("#make").addEventListener("click", async () => {
+      const result = prepare(text.value);
+      text.value = result.text;
+      if (!result.text) {
+        status.textContent = "請輸入可以朗讀嘅文字。";
+        return;
+      }
+      if (!server) {
+        status.textContent = "下載 MP3 要部電腦開住手機版網頁，手機連同一個 Wi-Fi 再開一次。而家只可以按「用手機讀出嚟」。";
+        return;
+      }
+      setBusy(true);
+      status.textContent = result.removed
+        ? "已整理文字。正在產生 MP3…"
+        : "正在產生 MP3…";
+      startEstimate(result.text.length);
+      try {
+        const response = await fetch("/api/mp3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: result.text, voice: voice.value, rate: rateValue() })
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({ error: "失敗" }));
+          throw new Error(payload.error || "失敗");
+        }
+        const blob = await response.blob();
+        stopTimer();
+        setBar(100);
+        const url = URL.createObjectURL(blob);
+        player.src = url;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "cantonese.mp3";
+        link.click();
+        status.textContent = "MP3 已準備好。如果無自動下載，可以用下面個播放器，再分享或儲存。";
+        player.play().catch(() => {});
+      } catch (error) {
+        stopTimer();
+        setBar(0);
+        status.textContent = String(error.message || error);
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    hasServer().then((info) => {
+      server = Boolean(info);
+      const where = document.querySelector("#where");
+      if (info) {
+        where.textContent = "手機請打開 http://" + info.ip + ":" + info.port;
+      } else {
+        where.textContent = "呢個網頁唔使開電腦。按「用手機讀出嚟」就用手機已安裝嘅廣東話聲線，唔會產生 MP3 檔。曉曼、曉佳、雲龍同下載 MP3 要有一部開住嘅伺服器，GitHub 做唔到。";
+        document.querySelector("#intro").textContent = "輸入文字，然後按「用手機讀出嚟」。表情符號會轉成可以讀出嚟嘅字。";
+      }
+    });
+    if (window.speechSynthesis) speechSynthesis.getVoices();
+  </script>
+</body>
+</html>

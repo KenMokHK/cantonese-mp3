@@ -12,9 +12,10 @@ python cantonese_mp3.py
 
 Choose a voice to hear a short sample. A progress bar shows while the MP3 is created. Emoji are replaced with words the voice can read.
 
-## iPhone and Android
+## iPhone and Android, computer off
 
-The Windows program cannot be installed on a phone. On the computer, double-click `Open on phone.bat`, then open the address it prints in Safari or Chrome on the same Wi-Fi.
+Open https://kenmokhk.github.io/cantonese-mp3/
 
-- **Download MP3** uses the computer.
-- **Speak on this phone** uses the phone’s own Cantonese voice and does not save a file. Install Chinese (Hong Kong) in the phone’s text-to-speech settings first.
+Press **用手機讀出嚟**. The phone speaks with its own Cantonese voice. This does not create an MP3 file. Install Chinese (Hong Kong) in the phone’s text-to-speech settings first.
+
+The named voices 曉曼, 曉佳, and 雲龍, and the Download MP3 button, need the computer server. GitHub cannot run that server. For an MP3 file, double-click `Open on phone.bat` on the computer and open the address it prints on the same Wi-Fi.
