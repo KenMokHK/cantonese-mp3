@@ -121,8 +121,14 @@
     const bar = document.querySelector("#bar");
     const player = document.querySelector("#player");
     const buttons = [...document.querySelectorAll("button")];
+    const SERVER_VOICES = [
+      ["zh-HK-HiuMaanNeural", "曉曼（女聲）"],
+      ["zh-HK-HiuGaaiNeural", "曉佳（女聲）"],
+      ["zh-HK-WanLungNeural", "雲龍（男聲）"]
+    ];
     let server = false;
     let timer = null;
+    let suppressDemo = false;
 
     function rateValue() {
       const n = Number(speed.value);
@@ -185,10 +191,50 @@
       await player.play();
     }
 
+    function voiceRank(item) {
+      const label = (item.lang + " " + item.name).toLowerCase();
+      if (/zh-hk|yue|cantonese|hong kong/.test(label)) return 0;
+      if (/zh-tw|zh-hant/.test(label)) return 1;
+      if (/^zh|chinese/.test(label)) return 2;
+      return 3;
+    }
+
+    function setVoiceOptions(pairs) {
+      suppressDemo = true;
+      const previous = voice.value;
+      voice.innerHTML = "";
+      pairs.forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        voice.appendChild(option);
+      });
+      if ([...voice.options].some((option) => option.value === previous)) voice.value = previous;
+      suppressDemo = false;
+    }
+
+    function fillDeviceVoices() {
+      if (server || !window.speechSynthesis) return;
+      const list = speechSynthesis.getVoices();
+      if (!list.length) {
+        setVoiceOptions([["", "正在讀取手機聲線…"]]);
+        return;
+      }
+      const ranked = [...list].sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name));
+      setVoiceOptions(ranked.map((item) => [item.voiceURI, item.name + "（" + item.lang + "）"]));
+    }
+
+    function selectedDeviceVoice() {
+      const list = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+      return list.find((item) => item.voiceURI === voice.value) || null;
+    }
+
     async function playDemo() {
-      const spoken = "你好，呢個係廣東話聲線示範。";
+      if (suppressDemo) return;
       if (!server) {
-        speakOnPhone(spoken);
+        const picked = selectedDeviceVoice();
+        const name = picked ? picked.name : "所選聲線";
+        speakOnPhone("你好，我係" + name + "。呢個係而家選中嘅聲線示範。");
         return;
       }
       setBusy(true);
@@ -209,19 +255,14 @@
       }
     }
 
-    function cantoneseVoice() {
-      const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
-      return voices.find((item) => /zh-HK|yue|Cantonese|Hong Kong/i.test(item.lang + " " + item.name)) || null;
-    }
-
     function speakOnPhone(spoken) {
       if (!window.speechSynthesis) {
         status.textContent = "呢個瀏覽器唔支援手機朗讀。";
         return;
       }
-      const picked = cantoneseVoice();
+      const picked = selectedDeviceVoice();
       if (!picked) {
-        status.textContent = "手機未有廣東話聲線。請先喺系統設定下載中文（香港），否則只會用普通話或者英文。";
+        status.textContent = "未有聲線可以選。請等下拉選單出現聲線，或者喺系統設定下載中文（香港）。";
         return;
       }
       const utterance = new SpeechSynthesisUtterance(spoken);
@@ -231,7 +272,7 @@
       utterance.rate = Math.max(0.5, Math.min(1.5, 1 + n / 100));
       speechSynthesis.cancel();
       speechSynthesis.speak(utterance);
-      status.textContent = "用緊手機聲線：" + picked.name + "。呢個唔會儲存 MP3。";
+      status.textContent = "正在用選單入面嘅聲線：" + picked.name + "。呢個唔會儲存 MP3。";
     }
 
     document.querySelector("#clean").addEventListener("click", () => {
@@ -253,7 +294,9 @@
     });
 
     document.querySelector("#demo").addEventListener("click", playDemo);
-    voice.addEventListener("change", playDemo);
+    voice.addEventListener("change", () => {
+      if (!suppressDemo) playDemo();
+    });
 
     document.querySelector("#make").addEventListener("click", async () => {
       const result = prepare(text.value);
@@ -307,11 +350,17 @@
       if (info) {
         where.textContent = "手機請打開 http://" + info.ip + ":" + info.port;
       } else {
-        where.textContent = "呢個網頁唔使開電腦。按「用手機讀出嚟」就用手機已安裝嘅廣東話聲線，唔會產生 MP3 檔。曉曼、曉佳、雲龍同下載 MP3 要有一部開住嘅伺服器，GitHub 做唔到。";
-        document.querySelector("#intro").textContent = "輸入文字，然後按「用手機讀出嚟」。表情符號會轉成可以讀出嚟嘅字。";
+        where.textContent = "下拉選單係呢部手機實際有嘅聲線。揀一個就會用嗰個聲線做示範。下載 MP3 同曉曼、曉佳、雲龍要開住部電腦。";
+        document.querySelector("#intro").textContent = "輸入文字，然後按「用手機讀出嚟」。讀出嚟嘅聲線同上面個選單一樣。";
+        fillDeviceVoices();
+      } else {
+        setVoiceOptions(SERVER_VOICES);
       }
     });
-    if (window.speechSynthesis) speechSynthesis.getVoices();
+    if (window.speechSynthesis) {
+      speechSynthesis.onvoiceschanged = fillDeviceVoices;
+      fillDeviceVoices();
+    }
   </script>
 </body>
 </html>
